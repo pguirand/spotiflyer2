@@ -44,6 +44,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedButton
 import androidx.compose.material.Switch
@@ -56,8 +57,12 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults.textFieldColors
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.rounded.CardGiftcard
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Flag
@@ -65,6 +70,8 @@ import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,7 +97,7 @@ import com.shabinder.common.uikit.GithubLogo
 import com.shabinder.common.uikit.ImageLoad
 import com.shabinder.common.uikit.SaavnLogo
 import com.shabinder.common.uikit.ShareImage
-import com.shabinder.common.uikit.SoundCloudLogo
+import com.shabinder    .common.uikit.SoundCloudLogo
 import com.shabinder.common.uikit.SpotifyLogo
 import com.shabinder.common.uikit.VerticalScrollbar
 import com.shabinder.common.uikit.YoutubeLogo
@@ -103,6 +110,18 @@ import com.shabinder.common.uikit.configurations.colorPrimary
 import com.shabinder.common.uikit.configurations.transparent
 import com.shabinder.common.uikit.dialogs.DonationDialogComponent
 import com.shabinder.common.uikit.rememberScrollbarAdapter
+//import org.jetbrains.skia.Picture
+import android.media.MediaPlayer;
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberUpdatedState
+//import org.jetbrains.skia.Picture
+import java.io.File
+import java.io.IOException
+
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.runtime.setValue
+
 
 @Composable
 fun SpotiFlyerMainContent(component: SpotiFlyerMain) {
@@ -139,6 +158,12 @@ fun SpotiFlyerMainContent(component: SpotiFlyerMain) {
                 component::loadImage,
                 component::onLinkSearch
             )
+            HomeCategory.Downloads -> DownloadsColumn(
+                "",
+//                model.records.sortedByDescending { it.id },
+                component::loadImage,
+                component::onLinkSearch
+            )
         }
     }
 }
@@ -172,6 +197,7 @@ fun HomeTabBar(
                         text = when (category) {
                             HomeCategory.About -> Strings.about()
                             HomeCategory.History -> Strings.history()
+                            HomeCategory.Downloads -> Strings.downloads()
                         },
                         style = MaterialTheme.typography.body2
                     )
@@ -180,6 +206,7 @@ fun HomeTabBar(
                     when (category) {
                         HomeCategory.About -> Icon(Icons.Outlined.Info, Strings.infoTab())
                         HomeCategory.History -> Icon(Icons.Outlined.History, Strings.historyTab())
+                        HomeCategory.Downloads -> Icon(Icons.Outlined.Download, Strings.downloadsTab())
                     }
                 }
             )
@@ -516,10 +543,87 @@ fun HistoryColumn(
 }
 
 @Composable
+fun DownloadsColumn(
+    folderPath: String,
+    loadImage: suspend (String) -> Picture,
+    onItemClicked: (String) -> Unit
+) {
+
+    val mediaplayer = remember { MediaPlayer() }
+    val folderPath = "/storage/emulated/0/Music/SpotiFlyer/"
+
+    val mp3FileList by rememberUpdatedState(
+        produceState<List<DownloadRecord>>(initialValue = emptyList()) {
+            val mp3Files = getMp3FromFolder(folderPath)
+            value = mp3Files.map {
+                DownloadRecord(
+//                    id = IdRecord,
+                    name = it.name,
+                    link = it.absolutePath,
+                    coverUrl = "",
+                    type = "Audio"
+                )
+            }
+        }
+    )
+    Crossfade(mp3FileList) {
+        if (it.value.isEmpty()) {
+            Column(Modifier.padding(8.dp).fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Outlined.Info, Strings.noHistoryAvailable(), modifier = Modifier.size(80.dp),
+                    colorOffWhite
+                )
+                Text(Strings.noHistoryAvailable(), style = SpotiFlyerTypography.h4.copy(fontWeight = FontWeight.Light), textAlign = TextAlign.Center)
+            }
+        } else {
+            Box {
+
+                val listState = rememberLazyListState()
+//                val itemList = it.distinctBy { record -> record.coverUrl }
+
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    content = {
+                        items(mp3FileList.value) { record ->
+                            PlayRecordItem(
+                                item = record,
+                                loadImage,
+                                onItemClicked,
+                                mediaplayer
+                            )
+                        }
+                    },
+                    state = listState,
+                    modifier = Modifier.padding(top = 8.dp).fillMaxSize()
+                )
+
+                /*VerticalScrollbar(
+                    modifier = Modifier.padding(end = 2.dp).align(Alignment.CenterEnd).fillMaxHeight(),
+                    adapter = rememberScrollbarAdapter(
+                        scrollState = listState,
+                        itemCount = itemList.size,
+                        averageItemSize = 70.dp
+                    )
+                )*/
+            }
+        }
+    }
+}
+
+fun getMp3FromFolder(folderPath: String): List<File> {
+    val folder = File(folderPath)
+    return folder.listFiles { _, name -> name.endsWith(".mp3", true) }?.toList() ?: emptyList()
+
+
+}
+
+
+@Composable
 fun DownloadRecordItem(
     item: DownloadRecord,
     loadImage: suspend (String) -> Picture,
-    onItemClicked: (String) -> Unit
+    onItemClicked: (String) -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(end = 8.dp)) {
         ImageLoad(
@@ -536,7 +640,7 @@ fun DownloadRecordItem(
                 modifier = Modifier.padding(horizontal = 8.dp).fillMaxSize()
             ) {
                 Text(item.type, fontSize = 13.sp, color = colorOffWhite)
-                Text("${Strings.tracks()}: ${item.totalFiles}", fontSize = 13.sp, color = colorOffWhite)
+//                Text("${Strings.tracks()}: ${item.totalFiles}", fontSize = 13.sp, color = colorOffWhite)
             }
         }
         Image(
@@ -549,6 +653,79 @@ fun DownloadRecordItem(
                 }
             )
         )
+    }
+}
+
+@Composable
+fun PlayRecordItem(
+    item: DownloadRecord,
+    loadImage: suspend (String) -> Picture,
+    onItemClicked: (String) -> Unit,
+    mediaPlayer : MediaPlayer?=null
+) {
+
+    val isPlaying = remember { mutableStateOf(false) }
+
+    var playbackPosition by remember { mutableStateOf(0) }
+
+    val updatePlayBackPosition : () -> Unit = {
+        mediaPlayer?.let {
+            playbackPosition = it.currentPosition
+        }
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(end = 8.dp)) {
+        ImageLoad(
+            item.coverUrl,
+            { loadImage(item.coverUrl) },
+            Strings.albumArt(),
+            modifier = Modifier.height(50.dp).width(50.dp).clip(SpotiFlyerShapes.medium)
+        )
+        Column(modifier = Modifier.padding(horizontal = 8.dp).height(60.dp).weight(1f), verticalArrangement = Arrangement.SpaceEvenly) {
+            Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = SpotiFlyerTypography.h6, color = colorAccent)
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier.padding(horizontal = 8.dp).fillMaxSize()
+            ) {
+                Text(item.type, fontSize = 13.sp, color = colorOffWhite)
+                Text("${Strings.tracks()}: ${item.totalFiles}", fontSize = 13.sp, color = colorOffWhite)
+            }
+        }
+        IconButton(
+            onClick = {
+                if (mediaPlayer != null) {
+
+                    if (isPlaying.value) {
+                        mediaPlayer.pause()
+                        updatePlayBackPosition() // Update the playback position when paused
+//                    mediaPlayer.reset()
+                        isPlaying.value = false
+
+                    } else /*if(!mediaPlayer.isPlaying)*/ {
+                        try {
+                            if (playbackPosition > 0) {
+                                // If playback was paused, seek to the saved position
+                                mediaPlayer.seekTo(playbackPosition)
+                            } else {
+                                mediaPlayer.reset()
+                                mediaPlayer.setDataSource(item.link)
+                                mediaPlayer.prepare()
+                            }
+                            mediaPlayer.start()
+                            isPlaying.value = true
+                        } catch (e: IOException) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }
+        ) {
+            Icon(
+                imageVector = if (isPlaying.value) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = if (isPlaying.value) "Pause" else "Play"
+            )
+        }
     }
 }
 
