@@ -552,22 +552,38 @@ fun DownloadsColumn(
     val mediaplayer = remember { MediaPlayer() }
     val folderPath = "/storage/emulated/0/Music/SpotiFlyer/"
 
-    val mp3FileList by rememberUpdatedState(
+    val mp3Files = remember(folderPath) {
+        getMp3FromFolder(folderPath).map {
+            DownloadRecord(
+                id = it.absolutePath.hashCode().toLong(),
+                name = it.name,
+                link = it.absolutePath,
+                coverUrl = "",
+                type = "Audio"
+            )
+        }
+    }
+
+/*    val mp3FileList by rememberUpdatedState(
         produceState<List<DownloadRecord>>(initialValue = emptyList()) {
             val mp3Files = getMp3FromFolder(folderPath)
+            var idRecord : Long = 1
             value = mp3Files.map {
                 DownloadRecord(
-//                    id = IdRecord,
+                    id = idRecord,
                     name = it.name,
                     link = it.absolutePath,
                     coverUrl = "",
                     type = "Audio"
                 )
             }
+            idRecord++
+
         }
-    )
-    Crossfade(mp3FileList) {
-        if (it.value.isEmpty()) {
+    )*/
+
+    Crossfade(mp3Files) {
+        if (mp3Files.isEmpty()) {
             Column(Modifier.padding(8.dp).fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     Icons.Outlined.Info, Strings.noHistoryAvailable(), modifier = Modifier.size(80.dp),
@@ -585,12 +601,12 @@ fun DownloadsColumn(
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     content = {
-                        items(mp3FileList.value) { record ->
+                        items(mp3Files) { record ->
                             PlayRecordItem(
                                 item = record,
                                 loadImage,
                                 onItemClicked,
-                                mediaplayer
+                                mediaplayer,
                             )
                         }
                     },
@@ -690,6 +706,7 @@ fun PlayRecordItem(
             ) {
                 Text(item.type, fontSize = 13.sp, color = colorOffWhite)
                 Text("${Strings.tracks()}: ${item.totalFiles}", fontSize = 13.sp, color = colorOffWhite)
+                Text("id: ${item.id}", fontSize = 13.sp, color = colorOffWhite)
             }
         }
         IconButton(
