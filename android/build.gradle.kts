@@ -98,7 +98,7 @@ dependencies {
     implementation(project(":common:providers"))
 
     //Media Player
-    implementation ("androidx.media:media:1.4.1")
+    implementation ("androidx.media:media:1.7.0")
 
     with(deps) {
 
